@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solmar City — Open World Crime Game</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1c2c;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,.8); user-select: none; }
+  .panel { background: rgba(8, 18, 28, .55); border: 1px solid rgba(255,255,255,.18);
+    border-radius: 8px; padding: 8px 12px; }
+  #cashBox { position: absolute; top: 12px; left: 12px; font-size: 22px; font-weight: 800; }
+  #cashBox .sub { font-size: 12px; font-weight: 600; color: #bfe3ff; }
+  #healthWrap { margin-top: 6px; width: 180px; height: 10px; background: rgba(0,0,0,.5);
+    border-radius: 5px; overflow: hidden; }
+  #healthBar { height: 100%; width: 100%; background: linear-gradient(90deg,#37d67a,#a5e34d); }
+  #stars { position: absolute; top: 12px; right: 12px; font-size: 26px; letter-spacing: 2px;
+    color: #ffd23e; }
+  #objective { position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    text-align: center; max-width: 520px; font-size: 15px; }
+  #objective .title { font-weight: 800; color: #ffd23e; font-size: 16px; }
+  #msg { position: absolute; top: 96px; left: 50%; transform: translateX(-50%);
+    font-size: 17px; font-weight: 700; text-align: center; }
+  #minimap { position: absolute; left: 12px; bottom: 12px; width: 190px; height: 190px;
+    border-radius: 50%; border: 3px solid rgba(255,255,255,.55);
+    background: rgba(8, 18, 28, .8); }
+  #speedBox { position: absolute; right: 14px; bottom: 12px; text-align: right; font-size: 14px; }
+  #speedBox .big { font-size: 34px; font-weight: 800; line-height: 1; }
+  #hint { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    font-size: 12px; color: #d7e6f2; opacity: .9; text-align: center; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 10px; height: 10px;
+    margin: -5px 0 0 -5px; border: 2px solid #fff; border-radius: 50%; opacity: .8; display: none; }
+  .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(6,24,40,.55), rgba(3,10,18,.88));
+    pointer-events: auto; z-index: 5; }
+  .card { max-width: 640px; margin: 16px; padding: 28px 34px; text-align: center;
+    background: rgba(6, 20, 32, .82); border: 1px solid rgba(255,210,62,.5); border-radius: 14px; }
+  .card h1 { margin: 0 0 4px; font-size: 54px; letter-spacing: 2px; color: #ffd23e;
+    font-style: italic; }
+  .card h2 { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: #9fd8ff; letter-spacing: 3px; }
+  .card p { font-size: 15px; line-height: 1.55; color: #e8f2fa; }
+  .card button { pointer-events: auto; cursor: pointer; margin: 6px; padding: 12px 26px;
+    font-size: 16px; font-weight: 800; color: #08131d; background: #ffd23e; border: 0; border-radius: 8px; }
+  .card button.ghost { background: transparent; color: #fff; border: 2px solid #fff; }
+  .keys { font-size: 13px; color: #bcd7ea; line-height: 1.8; text-align: left; display: inline-block; }
+  .hidden { display: none !important; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="hud">
+  <div id="cashBox" class="panel">$<span id="cash">0</span>
+    <div class="sub">SOLMAR CITY &nbsp;·&nbsp; <span id="dayTime">12:00</span></div>
+    <div id="healthWrap"><div id="healthBar"></div></div>
+  </div>
+  <div id="stars" class="panel">☆☆☆☆☆</div>
+  <div id="objective" class="panel"><div class="title" id="objTitle">SOLMAR CITY</div><div id="objText">Press Enter to start</div></div>
+  <div id="msg"></div>
+  <canvas id="minimap" width="190" height="190"></canvas>
+  <div id="speedBox" class="panel"><div class="big"><span id="speed">0</span></div><div id="speedUnit">km/h</div><div id="vehName">ON FOOT</div></div>
+  <div id="hint">WASD move / drive &nbsp;·&nbsp; E enter car &nbsp;·&nbsp; Click punch &nbsp;·&nbsp; H horn &nbsp;·&nbsp; Shift run &nbsp;·&nbsp; P pause &nbsp;·&nbsp; M mute</div>
+  <div id="crosshair"></div>
+</div>
+
+<div id="startScreen" class="overlay">
+  <div class="card">
+    <h1>SOLMAR CITY</h1>
+    <h2>AN OPEN-WORLD CRIME STORY</h2>
+    <p>You are <b>Rico Vale</b>, a wheelman fresh out of the Marina lockup with empty
+    pockets and one name in your phone: <b>Mara Sol</b>, the fixer who runs Solmar's
+    night trade. Do her jobs, earn your cut, and stay one step ahead of the
+    Solmar PD — in a city where every parked car is an opportunity.</p>
+    <p><span class="keys">
+      <b>W A S D</b> — move / drive &nbsp; <b>Mouse drag</b> — camera<br>
+      <b>E</b> — steal / enter car &nbsp; <b>Click</b> — punch &nbsp; <b>Space</b> — brake &nbsp; <b>H</b> — horn<br>
+      <b>Shift</b> — sprint &nbsp; <b>P</b> — pause &nbsp; <b>M</b> — mute sound
+    </span></p>
+    <button id="btnStart">NEW GAME</button>
+    <button id="btnContinue" class="ghost">CONTINUE</button>
+    <p style="font-size:12px;color:#9fb8cc">Progress saves automatically to this browser.</p>
+  </div>
+</div>
+
+<div id="pauseScreen" class="overlay hidden">
+  <div class="card">
+    <h1 style="font-size:40px">PAUSED</h1>
+    <p id="pauseStats">Cash $0 · Missions 0/3</p>
+    <button id="btnResume">RESUME</button>
+    <button id="btnQuit" class="ghost">SAVE &amp; QUIT TO TITLE</button>
+  </div>
+</div>
+
+<div id="endScreen" class="overlay hidden">
+  <div class="card">
+    <h1 id="endTitle" style="font-size:40px">BUSTED</h1>
+    <p id="endText"></p>
+    <button id="btnEndOk">BACK ON THE STREETS</button>
+  </div>
+</div>
+
+<p id="status" role="status" aria-live="polite"></p>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.min.js" } }
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
